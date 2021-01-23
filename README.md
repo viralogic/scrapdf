@@ -11,6 +11,3 @@ This library is fundamentally an aggregate of other popular Python PDF libraries
 
 ![PDF file sequence diagram](docs/pdf_processing.png)
 
-## Installation
-
-`pip install scrapdf`
