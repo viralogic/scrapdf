@@ -7,7 +7,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pypdf2 = "^1.26.0"
+"pdfminer.six" = "^20201018"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.1"
@@ -15,6 +15,7 @@ pytest-cov = "^2.11.1"
 flake8 = "^3.8.4"
 black = "^20.8b1"
 pre-commit = "^2.9.3"
+PyPDF2 = "^1.26.0"
 
 [tool.black]
 line-length = 88
