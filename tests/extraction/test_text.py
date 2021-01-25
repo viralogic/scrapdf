@@ -2,8 +2,8 @@ import unittest
 from pathlib import Path
 
 from pdfminer.pdfdocument import PDFPasswordIncorrect
-from scrapdf.extraction.text import TextPdfExtractor
-from scrapdf.exceptions import FileNotSupportedError
+from scrapdf.extraction.text import OcrPdfExtractor, TextPdfExtractor
+from scrapdf.exceptions import FileNotSupportedError, ParsingFailedError
 from PyPDF2 import PdfFileWriter, PdfFileReader
 
 
@@ -89,3 +89,20 @@ class TextPdfExtractorTests(unittest.TestCase):
             b"A block-sorting lossless data compression algorithm",
             pdf.metadata["Title"],
         )
+
+    def test_scanned_pdf(self) -> None:
+        doc = Path("tests/files/pdf/images/PublicWaterMassMailing.pdf")
+        pdf = TextPdfExtractor(doc)
+        self.assertRaises(ParsingFailedError, list, pdf)
+
+
+class OcrPdfExtractorTests(unittest.TestCase):
+    """
+    Tests for scanned documents
+    """
+
+    def test_page_text(self) -> None:
+        doc = Path("tests/files/pdf/images/PublicWaterMassMailing.pdf")
+        pdf = OcrPdfExtractor(doc)
+        for page in pdf:
+            self.assertTrue(len(page.text) > 0)
