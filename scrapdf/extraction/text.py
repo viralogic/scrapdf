@@ -12,7 +12,7 @@ from scrapdf.exceptions import (
 )
 from scrapdf.extraction.interfaces import PageText
 from scrapdf.extraction.pdf_chars import PdfCharacters
-from typing import Iterable, Any, Dict, Union, Optional
+from typing import Iterator, Any, Dict, Union, Optional
 import abc
 from io import StringIO
 import pdf2image
@@ -37,7 +37,7 @@ class IPdfFileTextExtractor(abc.ABC):
         self._password = password
 
     @abc.abstractmethod
-    def __iter__(self) -> Iterable[PageText]:
+    def __iter__(self) -> Iterator[PageText]:
         """
         Get text for each page in the document
         """
@@ -47,6 +47,13 @@ class IPdfFileTextExtractor(abc.ABC):
     def __next__(self) -> PageText:
         """
         Abstract next implementation
+        """
+        raise NotImplementedError()
+
+    @abc.abstractproperty
+    def pages(self) -> Iterator[Any]:
+        """
+        Pages in the PDF document
         """
         raise NotImplementedError()
 
@@ -65,10 +72,16 @@ class TextPdfExtractor(IPdfFileTextExtractor):
 
     def __init__(self, pdf_file: Path, password: str = "") -> None:
         super(TextPdfExtractor, self).__init__(pdf_file, password)
-        self.__file_stream = open(pdf_file, "rb")
-        parser = PDFParser(self.__file_stream)
+        self._file_stream = open(pdf_file, "rb")
+        parser = PDFParser(self._file_stream)
         self.pdf_doc = PDFDocument(parser=parser, password=password)
-        self.pages = PDFPage.get_pages(self.__file_stream, password=self._password)
+        self._pages = None
+
+    @property
+    def pages(self) -> Iterator[Any]:
+        if self._pages is None:
+            self._pages = PDFPage.get_pages(self._file_stream, password=self._password)
+        return self._pages
 
     def __extract_page_text(self, page: PDFPage) -> str:
         resource_manager = PDFResourceManager(caching=True)
@@ -84,9 +97,9 @@ class TextPdfExtractor(IPdfFileTextExtractor):
         return self
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
-        self.__file_stream.close()
+        self._file_stream.close()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[PageText]:
         return self
 
     def __next__(self) -> PageText:
@@ -116,28 +129,37 @@ class OcrPdfExtractor(TextPdfExtractor):
         super(OcrPdfExtractor, self).__init__(pdf_file, password)
         self.__temp_dir = tempfile.TemporaryDirectory()
         self.output_path = Path(self.__temp_dir.name)
-        self.pages = iter(
-            pdf2image.convert_from_path(
-                pdf_path=self.file_path,
-                userpw=self._password if self._password is not None else None,
-                output_folder=self.output_path,
+
+    @property
+    def pages(self) -> Iterator[Any]:
+        if self._pages is None:
+            self._pages = iter(
+                pdf2image.convert_from_path(
+                    pdf_path=self.file_path,
+                    userpw=self._password if self._password is not None else None,
+                    output_folder=self.output_path,
+                )
             )
-        )
+        return self._pages
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
-        self.__temp_dir.cleanup()
+        super(OcrPdfExtractor, self).__exit__(
+            exception_type, exception_value, exception_traceback
+        )
+        if self.output_path.exists():
+            self.__temp_dir.cleanup()
 
     def __extract_page_text(self, image: Image) -> Union[bytes, str]:
         result = pytesseract.image_to_string(image)
         return result
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[PageText]:
         return self
 
-    def __next__(self):
+    def __next__(self) -> PageText:
         self.num_pages += 1
         page = next(self.pages)
         text = self.__extract_page_text(page)

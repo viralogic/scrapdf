@@ -133,3 +133,4 @@ dmypy.json
 
 # Temp files
 temp/
+lcov.info

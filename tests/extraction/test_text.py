@@ -102,3 +102,8 @@ class OcrPdfExtractorTests(unittest.TestCase):
         with OcrPdfExtractor(doc) as pdf:
             for page in pdf:
                 self.assertTrue(len(page.text) > 0)
+
+    def test_page_metadata(self) -> None:
+        doc = Path("tests/files/pdf/images/PublicWaterMassMailing.pdf")
+        with OcrPdfExtractor(doc) as pdf:
+            self.assertEqual(b"Scanned Document", pdf.metadata["Title"])
